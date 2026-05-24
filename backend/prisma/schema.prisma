@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Patient {
+  id        String    @id @default(uuid())
+  name      String
+  gender    String
+  dob       DateTime
+  patientId String?   @unique
+  notes     String?
+  createdAt DateTime  @default(now())
+  sessions  Session[]
+}
+
+model Session {
+  id        String         @id @default(uuid())
+  patientId String
+  patient   Patient        @relation(fields: [patientId], references: [id])
+  notes     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  captures  CaptureImage[]
+}
+
+model CaptureImage {
+  id                String   @id @default(uuid())
+  sessionId         String
+  session           Session  @relation(fields: [sessionId], references: [id])
+  patientId         String
+  eyeSide           String
+  rawImageUrl       String   // S3 or hosted URL
+  enhancedImageUrl  String?
+  captureTime       DateTime
+  enhancementStatus String   @default("not_started")
+  qualityScore      Float?
+  notes             String?
+  metadata          Json?
+}
