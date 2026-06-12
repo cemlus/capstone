@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, TouchableWithoutFeedback, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { AppNavigationProp, RootStackParamList } from '../navigation/types';
 import type { RouteProp } from '@react-navigation/native';
@@ -131,7 +131,7 @@ const CameraScreen = () => {
       navigation.replace('ImageReview', { imageId: newCapture.id });
     } catch (error) {
       console.error('Failed to capture image', error);
-      alert('Capture failed. Please try again.');
+      Alert.alert('Error', 'Capture failed. Please try again.');
     } finally {
       setIsCapturing(false);
     }

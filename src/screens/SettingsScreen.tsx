@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { theme } from '../constants/theme';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
@@ -9,11 +9,11 @@ const SettingsScreen = () => {
 
   const handleRetryUploads = async () => {
     await UploadService.retryFailedUploads();
-    alert('Retry command sent to background queue.');
+    Alert.alert('Success', 'Retry command sent to background queue.');
   };
 
   const clearLocalDatabase = () => {
-    alert('This would drop SQLite tables and clear caches.');
+    Alert.alert('Wipe Database', 'This would drop SQLite tables and clear caches.');
   };
 
   return (

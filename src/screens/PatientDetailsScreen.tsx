@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { AppNavigationProp } from '../navigation/types';
 import { theme } from '../constants/theme';
@@ -22,7 +22,7 @@ const PatientDetailsScreen = () => {
 
   const handleSave = async () => {
     if (!name || !dob || !gender) {
-      alert('Please fill out all required fields.');
+      Alert.alert('Validation Error', 'Please fill out all required fields.');
       return;
     }
     
@@ -56,7 +56,7 @@ const PatientDetailsScreen = () => {
       navigation.replace('Session', { sessionId: sId });
     } catch (error) {
       console.error(error);
-      alert('Failed to save patient');
+      Alert.alert('Error', 'Failed to save patient');
     } finally {
       setLoading(false);
     }

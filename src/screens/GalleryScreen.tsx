@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert } from 'react-native';
 import { theme } from '../constants/theme';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
@@ -31,7 +31,7 @@ const GalleryScreen = () => {
         title="View Details" 
         variant="outline" 
         size="small" 
-        onPress={() => alert('View historical session not implemented in mock.')} 
+        onPress={() => Alert.alert('Info', 'View historical session not implemented in mock.')} 
       />
     </Card>
   );
