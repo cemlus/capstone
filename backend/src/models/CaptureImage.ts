@@ -12,6 +12,10 @@ export interface ICaptureImage {
   qualityScore?: number;
   notes?: string;
   metadata?: Record<string, any>;
+  
+  // Cloud AI Classification Results
+  diagnosisResult?: string;
+  confidenceScore?: number;
 }
 
 const CaptureImageSchema: Schema = new Schema({
@@ -25,7 +29,11 @@ const CaptureImageSchema: Schema = new Schema({
   enhancementStatus: { type: String, default: 'not_started' },
   qualityScore: { type: Number },
   notes: { type: String },
-  metadata: { type: Schema.Types.Mixed }
+  metadata: { type: Schema.Types.Mixed },
+  
+  // Cloud AI Classification
+  diagnosisResult: { type: String },
+  confidenceScore: { type: Number }
 });
 
 export const CaptureImageModel = mongoose.model<ICaptureImage>('CaptureImage', CaptureImageSchema);

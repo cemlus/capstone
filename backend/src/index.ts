@@ -53,6 +53,28 @@ app.get('/api/upload/presign', async (req, res) => {
   }
 });
 
+// Cloud AI: Glare and Contrast Correction Model Endpoint
+app.post('/api/enhance/glare', async (req, res) => {
+  try {
+    const { imageBase64 } = req.body;
+    if (!imageBase64) {
+      return res.status(400).json({ error: 'imageBase64 content payload is required.' });
+    }
+    console.log('Sending raw frame to Cloud Glare Correction Model...');
+    // Simulate cloud model compute latency
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    // Returns processed/corrected frame (mocked as the same base64 payload)
+    res.json({
+      enhancedBase64: imageBase64,
+      message: 'Glare correction model completed successfully.'
+    });
+  } catch (error) {
+    console.error('Glare correction failed:', error);
+    res.status(500).json({ error: 'Failed to run glare correction' });
+  }
+});
+
 // Sync Patients from Mobile App
 app.post('/api/sync/patient', async (req, res) => {
   try {
@@ -91,14 +113,59 @@ app.post('/api/sync/session', async (req, res) => {
   }
 });
 
-// Sync Captured Image from Mobile App
+// Sync Captured Image from Mobile App with Cloud Classification
 app.post('/api/sync/capture', async (req, res) => {
   try {
     const { id, sessionId, patientId, eyeSide, rawImageUrl, enhancedImageUrl, captureTime, enhancementStatus, qualityScore, notes, metadata } = req.body;
+    
+    // Retrieve Patient profile to extract clinical demographics for classification context
+    const patient = await PatientModel.findById(patientId);
+    
+    let diagnosisResult = undefined;
+    let confidenceScore = undefined;
+    
+    // If the image has been enhanced and synced, run the disease classifier
+    if (enhancedImageUrl && patient) {
+      console.log(`Triggering Cloud AI Classification for image ${id}...`);
+      
+      const calculateAge = (dob: Date) => {
+        const diffMs = Date.now() - dob.getTime();
+        const ageDate = new Date(diffMs);
+        return Math.abs(ageDate.getUTCFullYear() - 1970);
+      };
+      
+      const payload = {
+        imageUrl: enhancedImageUrl,
+        patientAge: calculateAge(new Date(patient.dob)),
+        patientGender: patient.gender,
+        clinicalNotes: notes,
+        zoom: metadata?.zoom || 1.0
+      };
+      
+      // Simulate Cloud ML Classification API latency
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      
+      // Mock classifier outcomes
+      const diagnoses = ['Diabetic Retinopathy', 'Glaucoma', 'Healthy Retina', 'Macular Degeneration'];
+      const randomIdx = Math.floor(Math.random() * diagnoses.length);
+      
+      diagnosisResult = diagnoses[randomIdx];
+      confidenceScore = Number((0.85 + Math.random() * 0.14).toFixed(2));
+      console.log(`Classification complete. Result: ${diagnosisResult} (Confidence: ${confidenceScore * 100}%)`);
+    }
+
     const capture = await CaptureImageModel.findOneAndUpdate(
       { _id: id },
       {
-        $set: { enhancedImageUrl, enhancementStatus, qualityScore, notes, metadata },
+        $set: { 
+          enhancedImageUrl, 
+          enhancementStatus, 
+          qualityScore, 
+          notes, 
+          metadata,
+          diagnosisResult,
+          confidenceScore
+        },
         $setOnInsert: { sessionId, patientId, eyeSide, rawImageUrl, captureTime: new Date(captureTime) }
       },
       { upsert: true, new: true }
@@ -106,7 +173,7 @@ app.post('/api/sync/capture', async (req, res) => {
     res.json(capture);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Failed to sync capture' });
+    res.status(500).json({ error: 'Failed to sync capture and run classification' });
   }
 });
 
