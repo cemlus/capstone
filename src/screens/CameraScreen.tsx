@@ -11,6 +11,7 @@ import { EyeSide } from '../models/types';
 import { FileService } from '../services/FileService';
 import { dbService } from '../database/SQLiteService';
 import { useAppStore } from '../store/useAppStore';
+import { AIEnhancementService } from '../services/AIEnhancementService';
 
 const CameraScreen = () => {
   const navigation = useNavigation<AppNavigationProp>();
@@ -124,6 +125,9 @@ const CameraScreen = () => {
       await dbService.addCapturedImage(newCapture);
       addSessionCapture(newCapture);
       
+      // Trigger AI glare/contrast correction immediately
+      AIEnhancementService.queueEnhancement(newCapture.id, finalPath);
+
       navigation.replace('ImageReview', { imageId: newCapture.id });
     } catch (error) {
       console.error('Failed to capture image', error);

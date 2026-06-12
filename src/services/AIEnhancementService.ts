@@ -1,5 +1,6 @@
 import { dbService } from '../database/SQLiteService';
 import { FileService } from './FileService';
+import { useAppStore } from '../store/useAppStore';
 
 export class AIEnhancementService {
   /**
@@ -10,6 +11,11 @@ export class AIEnhancementService {
     
     // Set status to queued in DB
     await dbService.updateCapturedImage(imageId, {
+      enhancementStatus: 'queued',
+    });
+
+    // Update Zustand state
+    useAppStore.getState().updateSessionCapture(imageId, {
       enhancementStatus: 'queued',
     });
 
@@ -26,6 +32,7 @@ export class AIEnhancementService {
   private static async processQueueStep(imageId: string, rawImagePath: string): Promise<void> {
     try {
       await dbService.updateCapturedImage(imageId, { enhancementStatus: 'processing' });
+      useAppStore.getState().updateSessionCapture(imageId, { enhancementStatus: 'processing' });
       
       // Simulating heavy AI processing time
       await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -41,9 +48,16 @@ export class AIEnhancementService {
         enhancedImagePath: enhancedPath,
       });
 
+      // Synchronize changes to Zustand store immediately
+      useAppStore.getState().updateSessionCapture(imageId, {
+        enhancementStatus: 'done',
+        enhancedImagePath: enhancedPath,
+      });
+
     } catch (error) {
       console.error(`AI Enhancement failed for ${imageId}`, error);
       await dbService.updateCapturedImage(imageId, { enhancementStatus: 'failed' });
+      useAppStore.getState().updateSessionCapture(imageId, { enhancementStatus: 'failed' });
     }
   }
 
@@ -51,8 +65,6 @@ export class AIEnhancementService {
    * Retrieves the current enhancement status for an image.
    */
   static async getEnhancementStatus(imageId: string) {
-    // This could query the DB or an active memory queue
     console.log(`Checking enhancement status for ${imageId}`);
-    // return dbService.getCapturedImage(imageId).enhancementStatus;
   }
 }
