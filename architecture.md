@@ -107,8 +107,8 @@ The pipeline is designed to execute immediately after the capture event, preserv
    - `react-native-vision-camera` outputs a temporary raw image file path.
 
 2. **Model Processing**:
-   - The raw image is passed to the **Glare/Contrast Model** in [AIEnhancementService.ts](file:///home/siddhant/projects/capstone/src/services/AIEnhancementService.ts).
-   - The model removes glare, equalizes contrast, and outputs the enhanced clinical-grade JPEG.
+   - The client pushes the raw frame data to the cloud glare-correction API (`POST /api/enhance/glare`) via [AIEnhancementService.ts](file:///home/siddhant/projects/capstone/src/services/AIEnhancementService.ts).
+   - The cloud model processes the raw image, corrects glare/contrast, and returns the enhanced image payload.
 
 3. **Permanent Mobile Storage**:
    - The original raw image is saved permanently to local device storage using [FileService.ts](file:///home/siddhant/projects/capstone/src/services/FileService.ts) as `raw_[sessionId]_[eyeSide]_[timestamp].jpg`.
@@ -222,6 +222,14 @@ To upload images securely from the mobile client to AWS S3 without exposing cred
 2. Backend generates a presigned PUT URL using the AWS SDK and returns it to the client.
 3. Mobile app uploads the image binary directly to AWS S3 via a `PUT` request.
 4. Mobile app upserts the capture metadata to the backend `POST /api/sync/capture` including the final S3 object URL.
+
+### 3. Cloud AI Classification Flow
+
+To assist in clinical diagnostics, the backend triggers automated classification once image metadata is synchronized:
+1. When `POST /api/sync/capture` is called and contains the `enhancedImageUrl`, the backend retrieves the associated `Patient` details (DOB/age, gender) and camera telemetry metadata (zoom).
+2. It forwards this combined clinical context package to the **Cloud Disease Classification Model**.
+3. The classifier returns a predicted diagnosis (e.g. `Healthy Retina`, `Diabetic Retinopathy`) and a prediction confidence score.
+4. The backend saves these results directly in the MongoDB document's `diagnosisResult` and `confidenceScore` fields.
 
 ---
 

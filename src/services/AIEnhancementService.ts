@@ -34,12 +34,26 @@ export class AIEnhancementService {
       await dbService.updateCapturedImage(imageId, { enhancementStatus: 'processing' });
       useAppStore.getState().updateSessionCapture(imageId, { enhancementStatus: 'processing' });
       
-      // Simulating heavy AI processing time
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      // Step 1: Send image data to the Cloud Glare Correction Model
+      // In a real device setup, read the file and send the base64:
+      // const base64 = await RNFS.readFile(rawImagePath, 'base64');
+      const response = await fetch('http://localhost:3000/api/enhance/glare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: 'mock_raw_retina_image_data' }),
+      });
 
+      if (!response.ok) {
+        throw new Error(`Cloud Glare Correction failed: ${response.statusText}`);
+      }
+
+      const { enhancedBase64 } = await response.json();
+      console.log('Successfully received corrected frame from cloud model.');
+
+      // Step 2: Save the corrected frame locally
       const enhancedPath = FileService.generateEnhancedFilePath(rawImagePath);
-      // Simulate saving the new file
-      // await RNFS.copyFile(rawImagePath, enhancedPath); 
+      // In a real device setup:
+      // await RNFS.writeFile(enhancedPath, enhancedBase64, 'base64');
 
       console.log(`AI Enhancement complete for ${imageId}. Saved to ${enhancedPath}`);
 
