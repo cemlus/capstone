@@ -1,10 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, TouchableWithoutFeedback } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { AppNavigationProp, RootStackParamList } from '../navigation/types';
 import type { RouteProp } from '@react-navigation/native';
-// Mocking vision camera for compilation
-// import { Camera, useCameraDevices, useFrameProcessor } from 'react-native-vision-camera';
+import { Camera } from 'react-native-vision-camera';
 import { theme } from '../constants/theme';
 import { Button } from '../components/Button';
 import { EyeSelector } from '../components/EyeSelector';
@@ -21,45 +20,93 @@ const CameraScreen = () => {
   const session = useAppStore(state => state.currentSession);
   const addSessionCapture = useAppStore(state => state.addSessionCapture);
 
+  const camera = useRef<Camera>(null);
+  const [device, setDevice] = useState<any>(null);
   const [hasPermission, setHasPermission] = useState(false);
   const [selectedEye, setSelectedEye] = useState<EyeSide>('left');
   const [isCapturing, setIsCapturing] = useState(false);
   const [zoom, setZoom] = useState(1);
-  const [flash, setFlash] = useState<'off' | 'on' | 'auto'>('off');
+  const [isTorchOn, setIsTorchOn] = useState(false);
+  
+  // Track layout dimensions for tap-to-focus normalization
+  const [previewLayout, setPreviewLayout] = useState({ width: 1, height: 1 });
 
-  const toggleFlash = () => {
-    setFlash(prev => prev === 'off' ? 'on' : prev === 'on' ? 'auto' : 'off');
+  const toggleTorch = () => {
+    setIsTorchOn(prev => !prev);
   };
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.5, 5)); // max zoom 5x
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.5, 1)); // min zoom 1x
   
-  // const devices = useCameraDevices();
-  // const device = devices.back;
-  // const camera = useRef<Camera>(null);
-
   useEffect(() => {
     (async () => {
-      // const status = await Camera.requestCameraPermission();
-      // setHasPermission(status === 'authorized');
-      setHasPermission(true); // Mocking permission
+      const status = await Camera.requestCameraPermission();
+      setHasPermission(status === 'granted');
     })();
   }, []);
 
+  useEffect(() => {
+    // Dynamic Device Selector with Fallbacks
+    const availableDevices = Camera.getAvailableCameraDevices();
+    
+    // 1. Look for Telephoto lens first (optimal optical zoom for retinal imaging)
+    const telephoto = availableDevices.find(
+      d => d.position === 'back' && d.physicalDevices.includes('telephoto-camera')
+    );
+    if (telephoto) {
+      setDevice(telephoto);
+      return;
+    }
+
+    // 2. Fallback to Wide-Angle lens
+    const wideAngle = availableDevices.find(
+      d => d.position === 'back' && d.physicalDevices.includes('wide-angle-camera')
+    );
+    if (wideAngle) {
+      setDevice(wideAngle);
+      return;
+    }
+
+    // 3. Fallback to any back camera
+    const anyBack = availableDevices.find(d => d.position === 'back');
+    if (anyBack) {
+      setDevice(anyBack);
+      return;
+    }
+
+    // 4. Ultimate fallback to first available device (front camera, simulator, etc.)
+    if (availableDevices.length > 0) {
+      setDevice(availableDevices[0]);
+    }
+  }, [hasPermission]);
+
+  const handleFocusTap = async (event: any) => {
+    if (!camera.current || !device) return;
+    
+    const { locationX, locationY } = event.nativeEvent;
+    
+    // Normalize coordinates between 0.0 (top-left) and 1.0 (bottom-right)
+    const x = locationX / previewLayout.width;
+    const y = locationY / previewLayout.height;
+
+    try {
+      await camera.current.focus({ x, y });
+      console.log(`Manual focus triggered at normalized coordinates: (${x.toFixed(2)}, ${y.toFixed(2)})`);
+    } catch (e) {
+      console.log('Focus action unsupported or failed on this device:', e);
+    }
+  };
+
   const handleCapture = async () => {
-    if (!session) return;
+    if (!session || !device) return;
     setIsCapturing(true);
     
     try {
-      // const photo = await camera.current?.takePhoto({
-      //   flash: flash,
-      //   qualityPrioritization: 'quality',
-      // });
+      const photo = await camera.current?.takePhoto({
+        flash: isTorchOn ? 'on' : 'off',
+      });
       
-      // Simulate photo capture delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const tempPath = `/mock/temp/photo_${Date.now()}.jpg`;
-
+      const tempPath = photo?.path || `/mock/temp/photo_${Date.now()}.jpg`;
       const finalPath = FileService.generateRawFilePath(sessionId, selectedEye);
       await FileService.moveFileToPermanentStorage(tempPath, finalPath);
 
@@ -99,30 +146,45 @@ const CameraScreen = () => {
     );
   }
 
-  // if (device == null) return <ActivityIndicator />
+  if (device == null) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={[styles.errorText, { marginTop: 10 }]}>Initializing Camera Device...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {/* Mock Camera View */}
-      <View style={styles.cameraPreview}>
-        <Text style={styles.mockCameraText}>Live Camera Preview</Text>
-        {/* <Camera
-          ref={camera}
-          style={StyleSheet.absoluteFill}
-          device={device}
-          isActive={true}
-          photo={true}
-          zoom={zoom}
-        /> */}
-      </View>
+      {/* Tap-to-Focus Wrapper around Camera Viewport */}
+      <TouchableWithoutFeedback onPress={handleFocusTap}>
+        <View 
+          style={styles.cameraPreview}
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            setPreviewLayout({ width: width || 1, height: height || 1 });
+          }}
+        >
+          <Camera
+            ref={camera}
+            style={StyleSheet.absoluteFill}
+            device={device}
+            isActive={true}
+            photo={true}
+            zoom={zoom}
+            torch={isTorchOn ? 'on' : 'off'}
+          />
+        </View>
+      </TouchableWithoutFeedback>
 
       <View style={styles.overlayControls}>
         <View style={styles.topRow}>
           <TouchableOpacity style={styles.iconBtn} onPress={handleClose}>
             <Text style={styles.iconText}>✕</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={toggleFlash}>
-            <Text style={styles.iconText}>Flash: {flash}</Text>
+          <TouchableOpacity style={styles.iconBtn} onPress={toggleTorch}>
+            <Text style={styles.iconText}>Torch: {isTorchOn ? 'ON' : 'OFF'}</Text>
           </TouchableOpacity>
         </View>
         
@@ -158,8 +220,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
   errorText: { color: theme.colors.text, marginBottom: theme.spacing.lg },
-  cameraPreview: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#111' },
-  mockCameraText: { color: '#666', fontSize: 18 },
+  cameraPreview: { flex: 1, backgroundColor: '#111' },
   overlayControls: { position: 'absolute', top: 50, left: 0, right: 0, paddingHorizontal: theme.spacing.lg },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   iconBtn: { paddingHorizontal: 15, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },

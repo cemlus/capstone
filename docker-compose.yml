@@ -1,19 +1,15 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database Service
+  # MongoDB Database Service
   db:
-    image: postgres:15-alpine
-    container_name: fundus-postgres-db
+    image: mongo:6.0
+    container_name: fundus-mongo-db
     restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: fundus_db
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mongo_data:/data/db
 
   # Node.js Express Backend Service
   backend:
@@ -25,12 +21,12 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: "postgresql://postgres:postgres@db:5432/fundus_db?schema=public"
+      MONGODB_URI: "mongodb://db:27017/fundus_db"
       PORT: 3000
     depends_on:
       - db
-    # Automatically apply database schema changes and start the server
-    command: sh -c "npx prisma db push && node dist/index.js"
+    # Start the compiled Node.js backend
+    command: node dist/index.js
 
 volumes:
-  postgres_data:
+  mongo_data:
