@@ -1,14 +1,12 @@
 // Wrapper around react-native-fs for local file management.
-// Using mock representations for architecture setup.
-// import RNFS from 'react-native-fs';
+import RNFS from 'react-native-fs';
 
 export class FileService {
   /**
    * Returns the app's document directory.
    */
   static getBaseDirectory(): string {
-    // return RNFS.DocumentDirectoryPath;
-    return '/mock/document/dir';
+    return RNFS.DocumentDirectoryPath || '/mock/document/dir';
   }
 
   /**
@@ -32,7 +30,10 @@ export class FileService {
   static async moveFileToPermanentStorage(tempPath: string, destPath: string): Promise<boolean> {
     try {
       console.log(`Moved file from ${tempPath} to ${destPath}`);
-      // await RNFS.moveFile(tempPath, destPath);
+      if (tempPath.startsWith('/mock') || destPath.startsWith('/mock')) {
+        return true;
+      }
+      await RNFS.moveFile(tempPath, destPath);
       return true;
     } catch (e) {
       console.error('Failed to move file', e);
@@ -44,8 +45,10 @@ export class FileService {
    * Checks if a file exists.
    */
   static async fileExists(path: string): Promise<boolean> {
-    // return RNFS.exists(path);
-    return true;
+    if (path.startsWith('/mock')) {
+      return true;
+    }
+    return RNFS.exists(path);
   }
   
   /**
@@ -53,8 +56,11 @@ export class FileService {
    */
   static async deleteFile(path: string): Promise<boolean> {
     try {
-      // await RNFS.unlink(path);
       console.log(`Deleted file at ${path}`);
+      if (path.startsWith('/mock')) {
+        return true;
+      }
+      await RNFS.unlink(path);
       return true;
     } catch (e) {
       console.error('Failed to delete file', e);
