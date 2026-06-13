@@ -142,6 +142,8 @@ app.post('/api/sync/capture', async (req, res) => {
         zoom: metadata?.zoom || 1.0
       };
       
+      console.log('Sending classification payload to Cloud AI Model:', JSON.stringify(payload, null, 2));
+
       // Simulate Cloud ML Classification API latency
       await new Promise((resolve) => setTimeout(resolve, 1500));
       

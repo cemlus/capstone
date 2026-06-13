@@ -38,7 +38,7 @@ export interface CaptureImage {
 export interface UploadQueueItem {
   id: string;
   imageId: string;
-  status: 'pending' | 'processing' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed';
   retryCount: number;
   lastAttemptAt?: string;
   errorMessage?: string;

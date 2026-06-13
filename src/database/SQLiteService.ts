@@ -184,6 +184,15 @@ class DatabaseService {
     console.log(`Updated captured image ${id} in SQLite.`);
   }
 
+  async getCapturedImage(id: string): Promise<CaptureImage | null> {
+    const database = await this.getDb();
+    const [results] = await database.executeSql('SELECT * FROM captures WHERE id = ?', [id]);
+    if (results.rows.length > 0) {
+      return results.rows.item(0) as CaptureImage;
+    }
+    return null;
+  }
+
   async getCapturedImages(sessionId: string): Promise<CaptureImage[]> {
     const database = await this.getDb();
     const [results] = await database.executeSql('SELECT * FROM captures WHERE sessionId = ? ORDER BY captureTime ASC', [sessionId]);

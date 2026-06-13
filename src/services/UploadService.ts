@@ -1,7 +1,6 @@
 import { dbService } from '../database/SQLiteService';
 import NetInfo from '@react-native-community/netinfo';
-
-const BACKEND_URL = 'http://localhost:3000';
+import { API_BASE_URL as BACKEND_URL } from '../constants/config';
 
 export class UploadService {
   /**
@@ -66,19 +65,25 @@ export class UploadService {
       await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate S3 PUT upload latency
       console.log(`Uploaded both raw and enhanced image payloads directly to S3 PUT endpoints.`);
 
+      // Fetch the actual capture record from local SQLite database
+      const capture = await dbService.getCapturedImage(task.imageId);
+      if (!capture) {
+        throw new Error(`Capture record ${task.imageId} not found in SQLite.`);
+      }
+
       // Step 4: Sync metadata and both S3 URLs to MongoDB via Express Sync API
       const syncResponse = await fetch(`${BACKEND_URL}/api/sync/capture`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: task.imageId,
-          sessionId: 'ses_mock_id', // Would map to local SQLite capture.sessionId
-          patientId: 'pat_mock_id',   // Would map to local SQLite capture.patientId
-          eyeSide: 'left',
+          sessionId: capture.sessionId,
+          patientId: capture.patientId,
+          eyeSide: capture.eyeSide,
           rawImageUrl: rawUrlData.objectUrl,         // AWS S3 raw image object URL
           enhancedImageUrl: enhancedUrlData.objectUrl, // AWS S3 enhanced image object URL
-          captureTime: new Date().toISOString(),
-          enhancementStatus: 'done',
+          captureTime: capture.captureTime,
+          enhancementStatus: capture.enhancementStatus,
         }),
       });
 
@@ -88,7 +93,7 @@ export class UploadService {
 
       // On Success:
       await dbService.updateUploadQueueItem(task.id, {
-        status: 'processing', // completed
+        status: 'completed',
       });
       await dbService.updateCapturedImage(task.imageId, { uploadStatus: 'uploaded' });
       console.log(`Successfully uploaded image ${task.imageId} to S3 and synced metadata to MongoDB.`);
