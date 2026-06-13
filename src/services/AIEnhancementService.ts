@@ -1,6 +1,7 @@
 import { dbService } from '../database/SQLiteService';
 import { FileService } from './FileService';
 import { useAppStore } from '../store/useAppStore';
+import { API_BASE_URL } from '../constants/config';
 
 export class AIEnhancementService {
   /**
@@ -37,7 +38,7 @@ export class AIEnhancementService {
       // Step 1: Send image data to the Cloud Glare Correction Model
       // In a real device setup, read the file and send the base64:
       // const base64 = await RNFS.readFile(rawImagePath, 'base64');
-      const response = await fetch('http://localhost:3000/api/enhance/glare', {
+      const response = await fetch(`${API_BASE_URL}/api/enhance/glare`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: 'mock_raw_retina_image_data' }),
